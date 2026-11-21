@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Post } from './interfaces/post.interface.js';
+import { CreatePostDto } from './dto/create-post.dto.js';
+import { UpdatePostDto } from './dto/update-post.dto.js';
 
 @Injectable()
 export class PostsService {
@@ -39,20 +41,20 @@ export class PostsService {
     findOne(id: number): Post {
         const singlePost = this.posts.find(post => post.id === id);
         if (!singlePost) {
-            throw new NotFoundException('Post not found');
+            throw new NotFoundException('Post service not found');
         }
         return singlePost;
     }
-    create(post: Post): Post {
+    create(post: CreatePostDto): Post {  
         const newPost = { ...post, id: this.getNextId(), createdAt: new Date() };
         this.posts.push(newPost);
         return newPost;
     }
 
-    update(id: number, post: Partial<Post>): Post {
+    update(id: number, post: UpdatePostDto): Post {
         const index = this.posts.findIndex(post => post.id === id);
         if (index === -1) {
-            throw new NotFoundException('Post not found');
+            throw new NotFoundException('Post service not found');
         }
         this.posts[index] = { ...this.posts[index], ...post, updatedAt: new Date() };
         return this.posts[index];
@@ -61,7 +63,7 @@ export class PostsService {
     delete(id: number): { message: string } {
         const index = this.posts.findIndex(post => post.id === id);
         if (index === -1) {
-            throw new NotFoundException('Post not found');
+            throw new NotFoundException('Post service not found');
         }
         this.posts.splice(index, 1);
         return { message: 'Post deleted successfully' };

@@ -8,10 +8,10 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe(
     {
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      disableErrorMessages: appConfig().nodeEnv === 'production' ? true : false,
+      whitelist: true, // allow only the fields that are defined in the DTO
+      forbidNonWhitelisted: true, // throw an error if a non-whitelisted field is sent
+      transform: true, // transform the payload to the DTO type
+      disableErrorMessages: appConfig().nodeEnv === 'production' ? true : false, // disable error messages in production
     }
   ));
 

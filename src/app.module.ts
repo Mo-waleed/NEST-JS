@@ -8,8 +8,8 @@ import appConfig from './config/app.config.js';
   imports: [PostsModule, ConfigModule.forRoot({
     isGlobal: true,
     load: [appConfig],
-  })], 
+  })],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
