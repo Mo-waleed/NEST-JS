@@ -1,0 +1,14 @@
+---
+description: Update README.md to match the app before every push to GitHub
+alwaysApply: true
+---
+
+# README before GitHub push
+
+Before `git push` (or any request to push this repo to GitHub), update `README.md` so it still describes what the app actually does.
+
+- Read the changed code first, then edit the README in the same change.
+- Cover behavior a reader needs: what the app does, endpoints, request and response shape, and how to run it.
+- Drop or rewrite sections that no longer match the code.
+- Include the README in the commit that is about to be pushed when the user asked for that commit or push.
+- Skip the README edit only when the push contains no behavior change (formatting, lockfile-only, or comment-only) and the README is already accurate.
