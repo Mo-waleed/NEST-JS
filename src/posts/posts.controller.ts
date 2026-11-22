@@ -1,41 +1,37 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { PostsService } from './posts.service.js';
-import type { Post as PostInterface } from './interfaces/post.interface.js';
 import { CreatePostDto } from './dto/create-post.dto.js';
 import { UpdatePostDto } from './dto/update-post.dto.js';
 import { PostExistsPipe } from './pipe/post-exists.pipe.js';
+import { Post as PostEntity } from './entities/post.entity.js';
 
 @Controller('posts')
 export class PostsController {
     constructor(private readonly postsService: PostsService) { }
 
     @Get()
-    findAll(@Query('search') search?: string): PostInterface[] {
-        const extractPosts = this.postsService.findAll();
-        if (search) {
-            return extractPosts.filter(post => post.title.toLowerCase().includes(search.toLowerCase()) || post.content.toLowerCase().includes(search.toLowerCase()));
-        }
-        return extractPosts;
+    async findAll(@Query('search') search?: string): Promise<PostEntity[]> {
+        return this.postsService.findAll();
     }
 
     @Get(':id')
-    findOne(@Param('id', PostExistsPipe) id: number): PostInterface {
+    async findOne(@Param('id',ParseIntPipe, PostExistsPipe) id: number): Promise<PostEntity> {
         return this.postsService.findOne(id);
     }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    create(@Body() post: CreatePostDto): PostInterface {
+    async create(@Body() post: CreatePostDto): Promise<PostEntity> {
         return this.postsService.create(post);
     }
 
     @Patch(':id')
-    update(@Param('id', PostExistsPipe) id: number, @Body() post: UpdatePostDto): PostInterface {
+    async update(@Param('id', ParseIntPipe, PostExistsPipe) id: number, @Body() post: UpdatePostDto): Promise<PostEntity> {
         return this.postsService.update(id, post);
     }
 
     @Delete(':id')
-    delete(@Param('id', PostExistsPipe) id: number): { message: string } {
-        return this.postsService.delete(id);
+    async delete(@Param('id', ParseIntPipe, PostExistsPipe) id: number): Promise<{ message: string }> {
+        return this.postsService.delete(id);    
     }
 }

@@ -1,70 +1,66 @@
 # Blog Posts API
 
-A NestJS HTTP service for managing blog posts. Clients can list posts, search them, create a post, update part of a post, and delete a post. Every write is checked before it is stored, and a request for an unknown post id returns `404`.
+A NestJS service that stores blog posts in PostgreSQL and exposes a JSON API to list, read, create, update, and delete them. Every write is validated before it is saved. A request for an id that is not in the database returns `404`.
 
-The service is the base for further NestJS work: persistence, request rules, and new features will be added on top of this API. The sections below describe the behavior that is in the code today.
+## Stack
 
-## What it does
+- [NestJS](https://nestjs.com) 12 with the Express HTTP adapter
+- [TypeORM](https://typeorm.io) and the `pg` driver
+- `class-validator` through a global `ValidationPipe`
+- `@nestjs/config` for environment variables
 
-`PostsService` keeps posts in memory and loads four sample posts when the process starts. The list is lost when the server stops.
+The project is ESM. Relative imports end in `.js`.
 
-TypeORM connects to PostgreSQL at startup. With `synchronize` enabled, it creates or updates the `post` table from the `Post` entity. The HTTP handlers still read and write the in-memory list. The entity is the schema the service will use when storage moves to the database.
+## Data model
 
-A post from the API looks like this:
+TypeORM maps the `Post` entity to the `post` table. On startup, `synchronize` is enabled, so the running schema follows the entity. Create the PostgreSQL database yourself before you start the app; synchronize creates and updates tables, and it does not create the database.
+
+| Column | Database type | Rules |
+| --- | --- | --- |
+| `id` | integer, primary key | Assigned by the database |
+| `title` | `varchar(50)` | Required on create. 3–50 characters |
+| `content` | `text` | Required on create. 10–1000 characters |
+| `authorName` | `varchar(25)` | Required on create. 3–25 characters |
+| `createdAt` | `timestamp` | Set when the row is inserted |
+| `updatedAt` | `timestamp` | Set when the row is inserted and refreshed on every save |
+
+A post returned by the API:
 
 ```json
 {
   "id": 1,
   "title": "First Post",
   "content": "This is the first post",
-  "authorName": "John Doe",
-  "createdAt": "2026-11-21T16:00:00.000Z",
-  "updatedAt": "2026-11-21T16:30:00.000Z"
+  "authorName": "Waleed",
+  "createdAt": "2026-11-22T18:08:49.303Z",
+  "updatedAt": "2026-11-22T18:08:49.347Z"
 }
 ```
 
-`createdAt` is set when the post is created. `updatedAt` is set only after a successful `PATCH`.
+`PostsService` reads and writes through the TypeORM repository for `Post`. Rows remain in PostgreSQL after the process stops.
 
-The table TypeORM manages matches that shape:
+## Request handling
 
-```ts
-@Entity()
-export class Post {
-  @PrimaryGeneratedColumn()
-  id: number;
+`POST` and `PATCH` bodies pass through the global `ValidationPipe` before the controller method runs. The pipe keeps only fields declared on the DTO, rejects any other property, and transforms the payload onto the DTO class. When `NODE_ENV` is `production`, validation failures omit the per-field messages.
 
-  @Column({ length: 50 })
-  title: string;
+`GET`, `PATCH`, and `DELETE` on `/posts/:id` run the id through `ParseIntPipe`, then `PostExistsPipe`.
 
-  @Column({ type: 'text' })
-  content: string;
-
-  @Column({ length: 25 })
-  authorName: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-}
-```
-
-`GET`, `PATCH`, and `DELETE` on `/posts/:id` pass the id through `PostExistsPipe` before the handler runs. A missing post returns `404`:
+- A value that is not an integer returns `400`.
+- `PostExistsPipe` loads the post. If that lookup fails, the response is `404`:
 
 ```json
 {
-  "message": "Post pipe transform not found",
+  "message": "Post not found",
   "error": "Not Found",
   "statusCode": 404
 }
 ```
 
-`PostsService` throws `Post service not found` when it cannot find that id. The pipe catches that error and sends the message above.
+Create copies `title`, `content`, and `authorName` onto a new entity, sets `createdAt`, and saves the row. Update loads the row, copies each field that was sent, and saves it. TypeORM writes `updatedAt` on that save. Delete loads the row, removes it, and returns a confirmation message.
 
 ## Configuration
 
-`ConfigModule` loads `.env` and registers two config factories. `src/config/app.config.ts` exposes `port` and `nodeEnv`. `src/config/database.config.ts` exposes the PostgreSQL connection. The app listens on `PORT` and opens the database during bootstrap, so these variables have to be set before `start`.
+`ConfigModule` loads `.env` and registers `src/config/app.config.ts` (`port`, `nodeEnv`) and `src/config/database.config.ts` (the PostgreSQL connection). The process reads these values at startup.
 
 ```env
 NODE_ENV=development
@@ -74,47 +70,58 @@ DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_USERNAME=postgres
 DATABASE_PASSWORD=postgres
-DATABASE_NAME=posts
+DATABASE_NAME=NestJS
 ```
 
-When `NODE_ENV` is `production`, validation failures do not include the field error messages. `synchronize` is turned on in `TypeOrmModule.forRootAsync`, so the running database schema follows the `Post` entity. Keep that setting for local development.
+`DATABASE_NAME` must be a database that already exists and is reachable with those credentials. The example above uses a database named `NestJS`. Posts are stored in `public.post`.
 
-## Endpoints
+`synchronize` stays on in `TypeOrmModule.forRootAsync`. Use that for local development. Turn it off before pointing the app at a shared or production database, and manage schema changes with migrations.
 
-Routes for posts are under `/posts`. `GET /` returns `Hello World!`.
+## API
 
-| Method | Path | What it does |
-| --- | --- | --- |
-| `GET` | `/posts` | Return every post |
-| `GET` | `/posts?search=first` | Return posts whose title or content contains the term (case-insensitive) |
-| `GET` | `/posts/:id` | Return one post. Unknown ids return `404` |
-| `POST` | `/posts` | Create a post. Responds with `201` and the saved post. The server assigns `id` and `createdAt` |
-| `PATCH` | `/posts/:id` | Update the fields you send and set `updatedAt`. Responds with the updated post |
-| `DELETE` | `/posts/:id` | Delete the post. Responds with `{ "message": "Post deleted successfully" }` |
+Base URL: `http://localhost:3000`
+
+| Method | Path | Success | Behavior |
+| --- | --- | --- | --- |
+| `GET` | `/` | `200` | Returns the text `Hello World!` |
+| `GET` | `/posts` | `200` | Returns every post |
+| `GET` | `/posts/:id` | `200` | Returns one post |
+| `POST` | `/posts` | `201` | Creates a post and returns the saved row |
+| `PATCH` | `/posts/:id` | `200` | Updates the fields present in the body and returns the saved row |
+| `DELETE` | `/posts/:id` | `200` | Deletes the post and returns `{ "message": "Post deleted successfully" }` |
 
 ### Validation
 
-A global `ValidationPipe` allows only fields defined on the DTO, rejects anything else, and transforms the body onto the DTO class.
-
-`POST` and `PATCH` accept `title`, `content`, and `authorName`. Any other property returns `400`. On `POST`, all three fields are required. On `PATCH`, each field is optional, and the fields you send still have to pass the same rules.
+`POST` requires `title`, `content`, and `authorName`. `PATCH` accepts any subset of those fields. Each field that is sent must pass the same rules. A failed check returns `400`. In development, `message` lists each rule that failed, for example `Title must be at least 3 characters long`.
 
 | Field | Rules |
 | --- | --- |
-| `title` | String, 3–50 characters, letters, numbers, and spaces only |
-| `content` | String, 10–1000 characters, letters, numbers, and spaces only |
-| `authorName` | String, 3–25 characters, letters, numbers, and spaces only |
+| `title` | String, 3–50 characters. Letters, digits, and spaces only |
+| `content` | String, 10–1000 characters. Letters, digits, and spaces only |
+| `authorName` | String, 3–25 characters. Letters, digits, and spaces only |
 
-A failed check returns `400`. In development the `message` array lists each rule that failed, for example `Title must be at least 3 characters long`.
+### Examples
 
-Create example:
+Create a post:
 
 ```bash
 curl -X POST http://localhost:3000/posts \
   -H "Content-Type: application/json" \
-  -d "{\"title\":\"New Post\",\"content\":\"Hello world\",\"authorName\":\"Ada\"}"
+  -d "{\"title\":\"First Post\",\"content\":\"This is the first post\",\"authorName\":\"Waleed\"}"
 ```
 
-Update example:
+```json
+{
+  "id": 1,
+  "title": "First Post",
+  "content": "This is the first post",
+  "authorName": "Waleed",
+  "createdAt": "2026-11-22T18:08:49.303Z",
+  "updatedAt": "2026-11-22T18:08:49.347Z"
+}
+```
+
+Update the title:
 
 ```bash
 curl -X PATCH http://localhost:3000/posts/1 \
@@ -122,15 +129,39 @@ curl -X PATCH http://localhost:3000/posts/1 \
   -d "{\"title\":\"Updated title\"}"
 ```
 
-## Project setup
+List posts:
 
-PostgreSQL has to be running and reachable with the values in `.env`.
+```bash
+curl http://localhost:3000/posts
+```
+
+Read one post:
+
+```bash
+curl http://localhost:3000/posts/1
+```
+
+Delete a post:
+
+```bash
+curl -X DELETE http://localhost:3000/posts/1
+```
+
+## Prerequisites
+
+- Node.js
+- [pnpm](https://pnpm.io)
+- PostgreSQL, with a database created for this app
+
+## Setup
 
 ```bash
 pnpm install
 ```
 
-## Compile and run
+Copy the configuration block above into `.env` and set the database values for your machine.
+
+## Run
 
 ```bash
 # development
@@ -139,9 +170,11 @@ pnpm run start
 # watch mode
 pnpm run start:dev
 
-# production mode
+# production mode (requires pnpm run build first)
 pnpm run start:prod
 ```
+
+The server listens on `PORT` (3000 by default).
 
 ## Tests
 
@@ -152,21 +185,23 @@ pnpm run test
 # e2e tests
 pnpm run test:e2e
 
-# test coverage
+# coverage
 pnpm run test:cov
 ```
 
 ## Layout
 
-- `src/main.ts` — boots the app, applies `ValidationPipe`, and listens on `PORT`
-- `src/app.module.ts` — root module; loads config and the TypeORM connection
-- `src/config/app.config.ts` — reads `PORT` and `NODE_ENV`
-- `src/config/database.config.ts` — reads the PostgreSQL connection settings
-- `src/posts/posts.module.ts` — registers the `Post` entity, controller, and service
-- `src/posts/posts.controller.ts` — HTTP routes and search filtering
-- `src/posts/posts.service.ts` — in-memory storage and CRUD
-- `src/posts/entities/post.entity.ts` — TypeORM `Post` entity and table columns
-- `src/posts/dto/create-post.dto.ts` — create-body rules
-- `src/posts/dto/update-post.dto.ts` — partial-update rules
-- `src/posts/pipe/post-exists.pipe.ts` — rejects unknown post ids with `404`
-- `src/posts/interfaces/post.interface.ts` — the `Post` shape returned by the API
+| Path | Role |
+| --- | --- |
+| `src/main.ts` | Creates the app, applies `ValidationPipe`, listens on `PORT` |
+| `src/app.module.ts` | Root module. Loads config and the TypeORM connection |
+| `src/config/app.config.ts` | Reads `PORT` and `NODE_ENV` |
+| `src/config/database.config.ts` | Reads the PostgreSQL connection settings |
+| `src/posts/posts.module.ts` | Registers the `Post` repository, controller, and service |
+| `src/posts/posts.controller.ts` | HTTP routes for `/posts` |
+| `src/posts/posts.service.ts` | Create, read, update, and delete through the repository |
+| `src/posts/entities/post.entity.ts` | TypeORM entity and column definitions |
+| `src/posts/dto/create-post.dto.ts` | Rules for `POST /posts` |
+| `src/posts/dto/update-post.dto.ts` | Rules for `PATCH /posts/:id` |
+| `src/posts/pipe/post-exists.pipe.ts` | Returns `404` when the id is not in the database |
+| `src/posts/interfaces/post.interface.ts` | TypeScript shape of a post |

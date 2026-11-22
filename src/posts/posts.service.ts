@@ -1,75 +1,66 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Post } from './interfaces/post.interface.js';
 import { CreatePostDto } from './dto/create-post.dto.js';
 import { UpdatePostDto } from './dto/update-post.dto.js';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Post as PostEntity } from './entities/post.entity.js';
 
 @Injectable()
 export class PostsService {
-    private posts: Post[] = [
-        {
-            id: 1,
-            title: 'First Post',
-            content: 'This is the first post',
-            authorName: 'John Doe',
-            createdAt: new Date(),
-        },
-        {
-            id: 2,
-            title: 'Second Post',
-            content: 'This is the second post',
-            authorName: 'Jane Doe',
-            createdAt: new Date(),
-        },
-        {
-            id: 3,
-            title: 'Third Post',
-            content: 'This is the third post',
-            authorName: 'John Doe',
-            createdAt: new Date(),
-        },
-        {
-            id: 4,
-            title: 'Fourth Post',
-            content: 'This is the fourth post',
-            authorName: 'Jane Doe',
-            createdAt: new Date(),
-        },
-    ];
-    findAll(): Post[] {
-        return this.posts;
+
+    constructor(@InjectRepository(PostEntity) private postRepository: Repository<PostEntity>) {
+
     }
-    findOne(id: number): Post {
-        const singlePost = this.posts.find(post => post.id === id);
+
+    async findAll(): Promise<PostEntity[]> {
+        return await this.postRepository.find();
+    }
+    async findOne(id: number): Promise<PostEntity> {
+        const singlePost = await this.postRepository.findOne({ where: { id } });
         if (!singlePost) {
             throw new NotFoundException('Post service not found');
         }
         return singlePost;
     }
-    create(post: CreatePostDto): Post {  
-        const newPost = { ...post, id: this.getNextId(), createdAt: new Date() };
-        this.posts.push(newPost);
-        return newPost;
+    async create(post: CreatePostDto): Promise<PostEntity> {
+        const newPost = this.postRepository.create({
+            title: post.title,
+            content: post.content,
+            authorName: post.authorName,
+            createdAt: new Date(),
+        });
+        return await this.postRepository.save(newPost);
     }
 
-    update(id: number, post: UpdatePostDto): Post {
-        const index = this.posts.findIndex(post => post.id === id);
-        if (index === -1) {
+    async update(id: number, updatedPost: UpdatePostDto): Promise<PostEntity> {
+
+        const findPostToUpdate = await this.findOne(id);
+        if (!findPostToUpdate) {
             throw new NotFoundException('Post service not found');
         }
-        this.posts[index] = { ...this.posts[index], ...post, updatedAt: new Date() };
-        return this.posts[index];
+
+        if (updatedPost.title) {
+            findPostToUpdate.title = updatedPost.title;
+        }
+        if (updatedPost.content) {
+            findPostToUpdate.content = updatedPost.content;
+        }
+        if (updatedPost.authorName) {
+            findPostToUpdate.authorName = updatedPost.authorName;
+        }
+
+        return await this.postRepository.save(findPostToUpdate);
     }
 
-    delete(id: number): { message: string } {
-        const index = this.posts.findIndex(post => post.id === id);
-        if (index === -1) {
+    async delete(id: number): Promise<{ message: string }> {
+
+        const findPostToDelete = await this.findOne(id);
+        if (!findPostToDelete) {
             throw new NotFoundException('Post service not found');
         }
-        this.posts.splice(index, 1);
+
+        await this.postRepository.remove(findPostToDelete as PostEntity);
         return { message: 'Post deleted successfully' };
     }
 
-    private getNextId(): number {
-        return this.posts.length > 0 ? Math.max(...this.posts.map(post => post.id)) + 1 : 1;
-    }
 }
