@@ -100,8 +100,13 @@ export class AuthService {
 
     // find the current user by id
 
-    private async findCurrentUserById(id: string) {
-        return await this.userRepository.findOne({ where: { id: Number(id) } });
+    async findCurrentUserById(id: string) {
+        const user = await this.userRepository.findOne({ where: { id: Number(id) } });
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+        const { password, ...userData } = user;
+        return userData;
     }
 
     private async comparePassword(password: string, hashedPassword: string): Promise<boolean> {

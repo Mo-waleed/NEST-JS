@@ -21,8 +21,8 @@ importers:
         specifier: ^12.0.5
         version: 12.0.5(@nestjs/common@12.6.0(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))
       '@nestjs/passport':
-        specifier: github:nestjs/passport
-        version: https://codeload.github.com/nestjs/passport/tar.gz/b4432d38d796c1604cb4d94fd8ffc149f8d8d800(@nestjs/common@12.6.0(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(passport@0.7.0)
+        specifier: ^12.0.2
+        version: 12.0.2(@nestjs/common@12.6.0(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(passport@0.7.0)
       '@nestjs/platform-express':
         specifier: ^12.0.1
         version: 12.6.0(@nestjs/common@12.6.0(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.6.0)(rxjs@7.8.2)
@@ -81,6 +81,9 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.2
+      '@types/passport':
+        specifier: ^1.0.17
+        version: 1.0.17
       '@types/passport-jwt':
         specifier: ^4.0.1
         version: 4.0.1
@@ -420,9 +423,8 @@ packages:
     engines: {node: '>= 20.0.0'}
     hasBin: true
 
-  '@nestjs/passport@https://codeload.github.com/nestjs/passport/tar.gz/b4432d38d796c1604cb4d94fd8ffc149f8d8d800':
-    resolution: {tarball: https://codeload.github.com/nestjs/passport/tar.gz/b4432d38d796c1604cb4d94fd8ffc149f8d8d800}
-    version: 12.0.2
+  '@nestjs/passport@12.0.2':
+    resolution: {integrity: sha512-ukOGcJ5FUQRYx0EC57gaR72IYfXmBNUSRNJL5QH8RlRk3G41QhcXC6De3rGwJrGVrQodCI3aW4E2H953I06B0Q==}
     peerDependencies:
       '@nestjs/common': ^11.0.0 || ^12.0.0
       passport: ^0.5.0 || ^0.6.0 || ^0.7.0
@@ -2529,7 +2531,7 @@ snapshots:
       ora: 5.4.1
       undici: 6.20.1
 
-  '@nestjs/passport@https://codeload.github.com/nestjs/passport/tar.gz/b4432d38d796c1604cb4d94fd8ffc149f8d8d800(@nestjs/common@12.6.0(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(passport@0.7.0)':
+  '@nestjs/passport@12.0.2(@nestjs/common@12.6.0(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(passport@0.7.0)':
     dependencies:
       '@nestjs/common': 12.6.0(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       passport: 0.7.0
