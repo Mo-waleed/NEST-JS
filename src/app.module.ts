@@ -7,6 +7,8 @@ import appConfig from './config/app.config.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import databaseConfig from './config/database.config.js';
 import { Post } from './posts/entities/post.entity.js';
+import { AuthModule } from './auth/auth.module.js';
+import { User } from './auth/entities/user.entity.js';
 @Module({
   imports: [PostsModule, ConfigModule.forRoot({
     isGlobal: true,
@@ -20,10 +22,11 @@ import { Post } from './posts/entities/post.entity.js';
         username: databaseConfig().username,
         password: databaseConfig().password,
         database: databaseConfig().name,
-        entities: [Post], // entities to be used in the application
+        entities: [Post, User], // entities to be used in the application
         synchronize: true, // only use in development
       })
-    })
+    }),
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],
