@@ -8,6 +8,7 @@ import { User } from './entities/user.entity.js';
 import { RolesGuard } from './guards/roles.guard.js';
 import { Roles } from './decorators/roles.decorators.js';
 import { UserRole } from './entities/user.entity.js';
+import { LoginThrottlerGuard } from './guards/login-throttler.guard.js';
 
 @Controller('auth')
 export class AuthController {
@@ -18,6 +19,7 @@ export class AuthController {
         return this.authService.register(registerDto);
     }
 
+    @UseGuards(LoginThrottlerGuard)
     @Post('login')
     async login(@Body() loginDto: LoginDto) {
         return this.authService.login(loginDto);
@@ -27,7 +29,6 @@ export class AuthController {
     async refreshToken(@Body('refreshToken') refreshToken: string) {
         return this.authService.refreshToken(refreshToken);
     }
-
 
     @Get('profile')
     @UseGuards(JwtAuthGuard)
